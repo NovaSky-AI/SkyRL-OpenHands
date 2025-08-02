@@ -191,9 +191,9 @@ def get_config(
         )
     )
     agent_config = AgentConfig(
-        codeact_enable_jupyter=False,
-        codeact_enable_browsing=RUN_WITH_BROWSING,
-        codeact_enable_llm_editor=False,
+        enable_jupyter=False,
+        enable_browsing=RUN_WITH_BROWSING,
+        enable_llm_editor=False,
         condenser=metadata.condenser_config,
         enable_prompt_extensions=False,
     )
@@ -589,8 +589,15 @@ if __name__ == '__main__':
 
     # NOTE: It is preferable to load datasets from huggingface datasets and perform post-processing
     # so we don't need to manage file uploading to OpenHands's repo
-    dataset = load_dataset(args.dataset, split=args.split)
-    swe_bench_tests = filter_dataset(dataset.to_pandas(), 'instance_id')
+    if "novasky" in args.dataset.lower():
+        import huggingface_hub
+        tmp_dir = tempfile.mkdtemp()
+        huggingface_hub.snapshot_download(args.dataset, local_dir=tmp_dir, repo_type="dataset")
+        dataset = load_dataset("parquet", data_files=[os.path.join(tmp_dir, f"{args.split}.parquet")])
+        swe_bench_tests = filter_dataset(pd.DataFrame(dataset[args.split]["instance"]), 'instance_id')
+    else:
+        dataset = load_dataset(args.dataset, split=args.split)
+        swe_bench_tests = filter_dataset(dataset.to_pandas(), 'instance_id')
     logger.info(
         f'Loaded dataset {args.dataset} with split {args.split}: {len(swe_bench_tests)} tasks'
     )

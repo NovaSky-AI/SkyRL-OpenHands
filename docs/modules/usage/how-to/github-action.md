@@ -1,6 +1,6 @@
 # Using the OpenHands GitHub Action
 
-This guide explains how to use the OpenHands GitHub Action, both within the OpenHands repository and in your own projects.
+This guide explains how to use the OpenHands GitHub Action in your own projects.
 
 ## Using the Action in the OpenHands Repository
 
@@ -39,7 +39,7 @@ You can provide custom directions for OpenHands by following the [README for the
 
 ### Custom configurations
 
-Github resolver will automatically check for valid [repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions?tool=webui#creating-secrets-for-a-repository) or [repository variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#creating-configuration-variables-for-a-repository) to customize its behavior.
+GitHub resolver will automatically check for valid [repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions?tool=webui#creating-secrets-for-a-repository) or [repository variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#creating-configuration-variables-for-a-repository) to customize its behavior.
 The customization options you can set are:
 
 | **Attribute name**               | **Type** | **Purpose**                                                                                         | **Example**                                        |
@@ -49,3 +49,4 @@ The customization options you can set are:
 | `OPENHANDS_MACRO`                | Variable | Customize default macro for invoking the resolver                                                   | `OPENHANDS_MACRO=@resolveit`                       |
 | `OPENHANDS_BASE_CONTAINER_IMAGE` | Variable | Custom Sandbox ([learn more](https://docs.all-hands.dev/modules/usage/how-to/custom-sandbox-guide)) | `OPENHANDS_BASE_CONTAINER_IMAGE="custom_image"`    |
 | `TARGET_BRANCH`                  | Variable | Merge to branch other than `main`                                                                   | `TARGET_BRANCH="dev"`                              |
+| `TARGET_RUNNER`                  | Variable | Target runner to execute the agent workflow (default ubuntu-latest)                                 | `TARGET_RUNNER="custom-runner"`                    |

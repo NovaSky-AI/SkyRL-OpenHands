@@ -40,7 +40,8 @@ def temp_dir(tmp_path_factory: TempPathFactory) -> str:
 def mock_docker_client():
     mock_client = MagicMock(spec=docker.DockerClient)
     mock_client.version.return_value = {
-        'Version': '19.03'
+        'Version': '20.10.0',
+        'Components': [{'Name': 'Engine', 'Version': '20.10.0'}],
     }  # Ensure version is >= 18.09
     return mock_client
 
@@ -86,6 +87,7 @@ def test_prep_build_folder(temp_dir):
             base_image=DEFAULT_BASE_IMAGE,
             build_from=BuildFromImageType.SCRATCH,
             extra_deps=None,
+            include_programming_languages=False,
         )
 
     # make sure that the code was copied
@@ -132,10 +134,11 @@ def test_generate_dockerfile_build_from_scratch():
     dockerfile_content = _generate_dockerfile(
         base_image,
         build_from=BuildFromImageType.SCRATCH,
+        include_programming_languages=False,
     )
     assert base_image in dockerfile_content
     assert 'apt-get update' in dockerfile_content
-    assert 'wget curl sudo apt-utils git' in dockerfile_content
+    assert 'wget curl' in dockerfile_content
     assert 'poetry' in dockerfile_content and '-c conda-forge' in dockerfile_content
     assert 'python=3.12' in dockerfile_content
 
@@ -152,6 +155,7 @@ def test_generate_dockerfile_build_from_lock():
     dockerfile_content = _generate_dockerfile(
         base_image,
         build_from=BuildFromImageType.LOCK,
+        include_programming_languages=False,
     )
 
     # These commands SHOULD NOT include in the dockerfile if build_from_scratch is False
@@ -170,6 +174,7 @@ def test_generate_dockerfile_build_from_versioned():
     dockerfile_content = _generate_dockerfile(
         base_image,
         build_from=BuildFromImageType.VERSIONED,
+        include_programming_languages=False,
     )
 
     # these commands should not exist when build from versioned
@@ -246,7 +251,11 @@ def test_build_runtime_image_from_scratch():
             == f'{get_runtime_image_repo()}:{OH_VERSION}_mock-lock-tag_mock-source-tag'
         )
         mock_prep_build_folder.assert_called_once_with(
-            ANY, base_image, BuildFromImageType.SCRATCH, None
+            ANY,
+            base_image,
+            BuildFromImageType.SCRATCH,
+            None,
+            include_programming_languages=False,
         )
 
 
@@ -341,6 +350,7 @@ def test_build_runtime_image_exact_hash_not_exist_and_lock_exist():
             f'{get_runtime_image_repo()}:{OH_VERSION}_mock-lock-tag',
             BuildFromImageType.LOCK,
             None,
+            include_programming_languages=False,
         )
 
 
@@ -400,6 +410,7 @@ def test_build_runtime_image_exact_hash_not_exist_and_lock_not_exist_and_version
             f'{get_runtime_image_repo()}:{OH_VERSION}_mock-versioned-tag',
             BuildFromImageType.VERSIONED,
             None,
+            include_programming_languages=False,
         )
 
 
@@ -612,7 +623,10 @@ CMD ["sh", "-c", "echo 'Hello, World!'"]
 
 def test_image_exists_local(docker_runtime_builder):
     mock_client = MagicMock()
-    mock_client.version().get.return_value = '18.9'
+    mock_client.version.return_value = {
+        'Version': '20.10.0',
+        'Components': [{'Name': 'Engine', 'Version': '20.10.0'}],
+    }  # Ensure version is >= 18.09
     builder = DockerRuntimeBuilder(mock_client)
     image_name = 'existing-local:image'  # The mock pretends this exists by default
     assert builder.image_exists(image_name)
@@ -620,7 +634,10 @@ def test_image_exists_local(docker_runtime_builder):
 
 def test_image_exists_not_found():
     mock_client = MagicMock()
-    mock_client.version().get.return_value = '18.9'
+    mock_client.version.return_value = {
+        'Version': '20.10.0',
+        'Components': [{'Name': 'Engine', 'Version': '20.10.0'}],
+    }  # Ensure version is >= 18.09
     mock_client.images.get.side_effect = docker.errors.ImageNotFound(
         "He doesn't like you!"
     )

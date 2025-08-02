@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 PROCESS_FILEPATH=$1
 if [ -z "$PROCESS_FILEPATH" ]; then
@@ -16,7 +16,6 @@ fi
 INSTANCE_ID=$2
 DATASET_NAME=${3:-"princeton-nlp/SWE-bench_Lite"}
 SPLIT=${4:-"test"}
-N_PROCESS=${5:-32}
 
 echo "INSTANCE_ID: $INSTANCE_ID"
 echo "DATASET_NAME: $DATASET_NAME"
@@ -77,6 +76,7 @@ echo "Running SWE-bench evaluation"
 echo "=============================================================="
 
 RUN_ID=$(date +"%Y%m%d_%H%M%S")
+N_PROCESS=4
 
 if [ -z "$INSTANCE_ID" ]; then
     echo "Running SWE-bench evaluation on the whole input file..."

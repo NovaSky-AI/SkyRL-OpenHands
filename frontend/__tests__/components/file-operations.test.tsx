@@ -1,7 +1,17 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { Messages } from "#/components/features/chat/messages";
 import type { Message } from "#/message";
+import { renderWithProviders } from "test-utils";
+
+// Mock the useParams hook to provide a conversationId
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual<typeof import("react-router")>("react-router");
+  return {
+    ...actual,
+    useParams: () => ({ conversationId: "test-conversation-id" }),
+  };
+});
 
 describe("File Operations Messages", () => {
   it("should show success indicator for successful file read operation", () => {
@@ -16,7 +26,7 @@ describe("File Operations Messages", () => {
       },
     ];
 
-    render(<Messages messages={messages} isAwaitingUserConfirmation={false} />);
+    renderWithProviders(<Messages messages={messages} isAwaitingUserConfirmation={false} />);
 
     const statusIcon = screen.getByTestId("status-icon");
     expect(statusIcon).toBeInTheDocument();
@@ -35,7 +45,7 @@ describe("File Operations Messages", () => {
       },
     ];
 
-    render(<Messages messages={messages} isAwaitingUserConfirmation={false} />);
+    renderWithProviders(<Messages messages={messages} isAwaitingUserConfirmation={false} />);
 
     const statusIcon = screen.getByTestId("status-icon");
     expect(statusIcon).toBeInTheDocument();
@@ -54,7 +64,7 @@ describe("File Operations Messages", () => {
       },
     ];
 
-    render(<Messages messages={messages} isAwaitingUserConfirmation={false} />);
+    renderWithProviders(<Messages messages={messages} isAwaitingUserConfirmation={false} />);
 
     const statusIcon = screen.getByTestId("status-icon");
     expect(statusIcon).toBeInTheDocument();
@@ -73,7 +83,7 @@ describe("File Operations Messages", () => {
       },
     ];
 
-    render(<Messages messages={messages} isAwaitingUserConfirmation={false} />);
+    renderWithProviders(<Messages messages={messages} isAwaitingUserConfirmation={false} />);
 
     const statusIcon = screen.getByTestId("status-icon");
     expect(statusIcon).toBeInTheDocument();

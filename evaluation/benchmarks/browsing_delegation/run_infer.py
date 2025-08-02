@@ -25,6 +25,7 @@ from openhands.core.config import (
 from openhands.core.logger import openhands_logger as logger
 from openhands.core.main import create_runtime, run_controller
 from openhands.events.action import MessageAction
+from openhands.utils.async_utils import call_async_from_sync
 
 # Only CodeActAgent can delegate to BrowsingAgent
 SUPPORTED_AGENT_CLS = {'CodeActAgent'}
@@ -33,9 +34,9 @@ SUPPORTED_AGENT_CLS = {'CodeActAgent'}
 def get_config(
     metadata: EvalMetadata,
 ) -> AppConfig:
-    assert (
-        metadata.max_iterations == 1
-    ), 'max_iterations must be 1 for browsing delegation evaluation.'
+    assert metadata.max_iterations == 1, (
+        'max_iterations must be 1 for browsing delegation evaluation.'
+    )
     sandbox_config = get_default_sandbox_config_for_eval()
     sandbox_config.base_container_image = 'python:3.12-bookworm'
     config = AppConfig(
@@ -74,6 +75,7 @@ def process_instance(
     )
 
     runtime = create_runtime(config)
+    call_async_from_sync(runtime.connect)
 
     state: State | None = asyncio.run(
         run_controller(

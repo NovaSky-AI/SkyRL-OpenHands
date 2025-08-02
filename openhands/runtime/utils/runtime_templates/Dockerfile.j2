@@ -10,28 +10,102 @@ ENV POETRY_VIRTUALENVS_PATH=/openhands/poetry \
     GIT_EDITOR="code --wait" \
     OPENVSCODE_SERVER_ROOT=/openhands/.openvscode-server
 
+{% if include_programming_languages %}
+ENV GOPATH=/go \
+    GOROOT=/usr/local/go \
+    PATH="/usr/local/go/bin:/go/bin:/root/.cargo/bin:${PATH}" \
+    JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+{% endif %}
+
 {% macro setup_base_system() %}
 
 # Install base system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        wget curl sudo apt-utils git jq tmux \
+        wget curl ca-certificates sudo apt-utils git jq tmux build-essential ripgrep \
         {%- if 'ubuntu' in base_image and (base_image.endswith(':latest') or base_image.endswith(':24.04')) -%}
         libgl1 \
         {%- else %}
         libgl1-mesa-glx \
         {% endif -%}
         libasound2-plugins libatomic1 && \
+    {%- if 'ubuntu' in base_image -%}
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    TZ=Etc/UTC DEBIAN_FRONTEND=noninteractive \
+        apt-get install -y --no-install-recommends nodejs python3.12 python-is-python3 python3-pip python3.12-venv && \
+    corepack enable yarn && \
+    {% endif %}
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Remove UID 1000 if it's called pn--this fixes the nikolaik image for ubuntu users
-RUN if getent passwd 1000 | grep -q pn; then userdel pn; fi
+# Install Docker
+RUN apt-get update && \
+    apt-get install -y apt-transport-https ca-certificates gnupg lsb-release && \
+    if grep -q "Debian" /etc/os-release; then \
+        curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null; \
+    else \
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null; \
+    fi && \
+    apt-get update && \
+    apt-get install -y docker-ce docker-ce-cli containerd.io && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+{% if include_programming_languages %}
+# Install Java
+RUN apt-get update && \
+    apt-get install -y openjdk-17-jdk maven gradle && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Golang
+RUN curl -OL https://golang.org/dl/go1.21.0.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz && \
+    rm go1.21.0.linux-amd64.tar.gz && \
+    echo "export PATH=$PATH:/usr/local/go/bin" >> /etc/profile && \
+    echo "export PATH=$PATH:/usr/local/go/bin" >> /etc/bash.bashrc
+
+# Install PHP
+RUN apt-get update && \
+    apt-get install -y php && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Ruby
+RUN apt-get update && \
+    apt-get install -y ruby-full ruby-bundler && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+{% endif %}
+
+
+{% if 'ubuntu' in base_image %}
+RUN ln -s "$(dirname $(which node))/corepack" /usr/local/bin/corepack && \
+    npm install -g corepack && corepack enable yarn && \
+    curl -fsSL --compressed https://install.python-poetry.org | python -
+{% endif %}
+
+# Install uv (required by MCP)
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/openhands/bin" sh
+# Add /openhands/bin to PATH
+ENV PATH="/openhands/bin:${PATH}"
+
+# Remove UID 1000 named pn or ubuntu, so the 'openhands' user can be created from ubuntu hosts
+RUN (if getent passwd 1000 | grep -q pn; then userdel pn; fi) && \
+    (if getent passwd 1000 | grep -q ubuntu; then userdel ubuntu; fi)
+
 
 # Create necessary directories
 RUN mkdir -p /openhands && \
     mkdir -p /openhands/logs && \
     mkdir -p /openhands/poetry
+
+{% if include_programming_languages %}
+RUN mkdir -p /go && \
+    chmod -R 777 /go
+{% endif %}
 
 {% endmacro %}
 
@@ -41,7 +115,7 @@ RUN mkdir -p /openhands && \
 # 2. https://github.com/gitpod-io/openvscode-releases
 
 # Setup VSCode Server
-ARG RELEASE_TAG="openvscode-server-v1.94.2"
+ARG RELEASE_TAG="openvscode-server-v1.98.2"
 ARG RELEASE_ORG="gitpod-io"
 # ARG USERNAME=openvscode-server
 # ARG USER_UID=1000
@@ -64,35 +138,61 @@ RUN if [ -z "${RELEASE_TAG}" ]; then \
     if [ -d "${OPENVSCODE_SERVER_ROOT}" ]; then rm -rf "${OPENVSCODE_SERVER_ROOT}"; fi && \
     mv ${RELEASE_TAG}-linux-${arch} ${OPENVSCODE_SERVER_ROOT} && \
     cp ${OPENVSCODE_SERVER_ROOT}/bin/remote-cli/openvscode-server ${OPENVSCODE_SERVER_ROOT}/bin/remote-cli/code && \
-    rm -f ${RELEASE_TAG}-linux-${arch}.tar.gz && \
-    # Install our custom extension
-    mkdir -p ${OPENVSCODE_SERVER_ROOT}/extensions/openhands-hello-world && \
+    rm -f ${RELEASE_TAG}-linux-${arch}.tar.gz
+
+
+
+{% endmacro %}
+
+{% macro install_vscode_extensions() %}
+# Install our custom extension
+RUN mkdir -p ${OPENVSCODE_SERVER_ROOT}/extensions/openhands-hello-world && \
     cp -r /openhands/code/openhands/runtime/utils/vscode-extensions/hello-world/* ${OPENVSCODE_SERVER_ROOT}/extensions/openhands-hello-world/
 
+RUN mkdir -p ${OPENVSCODE_SERVER_ROOT}/extensions/openhands-memory-monitor && \
+    cp -r /openhands/code/openhands/runtime/utils/vscode-extensions/memory-monitor/* ${OPENVSCODE_SERVER_ROOT}/extensions/openhands-memory-monitor/
+
+# Some extension dirs are removed because they trigger false positives in vulnerability scans.
+RUN rm -rf ${OPENVSCODE_SERVER_ROOT}/extensions/{handlebars,pug,json,diff,grunt,ini,npm}
 {% endmacro %}
 
 {% macro install_dependencies() %}
 # Install all dependencies
 WORKDIR /openhands/code
-RUN \
-    /openhands/micromamba/bin/micromamba config set changeps1 False && \
-    # Configure Poetry and create virtual environment
+
+# Configure micromamba and poetry
+RUN /openhands/micromamba/bin/micromamba config set changeps1 False && \
     /openhands/micromamba/bin/micromamba run -n openhands poetry config virtualenvs.path /openhands/poetry && \
-    /openhands/micromamba/bin/micromamba run -n openhands poetry env use python3.12 && \
-    # Install project dependencies
-    /openhands/micromamba/bin/micromamba run -n openhands poetry install --only main,runtime --no-interaction --no-root && \
-    # Update and install additional tools
-    apt-get update && \
+    /openhands/micromamba/bin/micromamba run -n openhands poetry env use python3.12
+
+# Install project dependencies in smaller chunks
+# Ensure we have all necessary build dependencies for pydantic-core
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    python3-dev \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install main dependencies first
+RUN /openhands/micromamba/bin/micromamba run -n openhands poetry install --only main --no-interaction --no-root
+
+# Then install runtime dependencies
+RUN /openhands/micromamba/bin/micromamba run -n openhands poetry install --only runtime --no-interaction --no-root
+
+# Install playwright and its dependencies
+RUN apt-get update && \
     /openhands/micromamba/bin/micromamba run -n openhands poetry run pip install playwright && \
-    /openhands/micromamba/bin/micromamba run -n openhands poetry run playwright install --with-deps chromium && \
-    # Set environment variables
-    echo "OH_INTERPRETER_PATH=$(/openhands/micromamba/bin/micromamba run -n openhands poetry run python -c "import sys; print(sys.executable)")" >> /etc/environment && \
-    # Clear caches
-    /openhands/micromamba/bin/micromamba run -n openhands poetry cache clear --all . -n && \
-    # Set permissions
+    /openhands/micromamba/bin/micromamba run -n openhands poetry run playwright install --with-deps chromium
+
+# Set environment variables and permissions
+RUN /openhands/micromamba/bin/micromamba run -n openhands poetry run python -c "import sys; print('OH_INTERPRETER_PATH=' + sys.executable)" >> /etc/environment && \
     chmod -R g+rws /openhands/poetry && \
-    mkdir -p /openhands/workspace && chmod -R g+rws,o+rw /openhands/workspace && \
-    # Clean up
+    mkdir -p /openhands/workspace && chmod -R g+rws,o+rw /openhands/workspace
+
+# Clear caches
+RUN /openhands/micromamba/bin/micromamba run -n openhands poetry cache clear --all . -n && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
     /openhands/micromamba/bin/micromamba clean --all
 
@@ -137,6 +237,7 @@ COPY ./code/pyproject.toml ./code/poetry.lock /openhands/code/
 # ================================================================
 RUN if [ -d /openhands/code/openhands ]; then rm -rf /openhands/code/openhands; fi
 COPY ./code/pyproject.toml ./code/poetry.lock /openhands/code/
+
 COPY ./code/openhands /openhands/code/openhands
 RUN chmod a+rwx /openhands/code/openhands/__init__.py
 
@@ -147,6 +248,7 @@ RUN chmod a+rwx /openhands/code/openhands/__init__.py
 # ================================================================
 {% if build_from_versioned %}
 {{ install_dependencies() }}
+{{ install_vscode_extensions() }}
 {% endif %}
 
 # Install extra dependencies if specified

@@ -221,9 +221,9 @@ def prepare_dataset(
     eval_ids: list[str] | None = None,
     skip_num: int | None = None,
 ):
-    assert (
-        'instance_id' in dataset.columns
-    ), "Expected 'instance_id' column in the dataset. You should define your own unique identifier for each instance and use it as the 'instance_id' column."
+    assert 'instance_id' in dataset.columns, (
+        "Expected 'instance_id' column in the dataset. You should define your own unique identifier for each instance and use it as the 'instance_id' column."
+    )
     id_column = 'instance_id'
     logger.info(f'Writing evaluation output to {output_file}')
     finished_ids: set[str] = set()
@@ -247,11 +247,21 @@ def prepare_dataset(
             f'Starting evaluation with skipping first {skip_num} instances ({len(dataset)} instances to run).'
         )
         if eval_n_limit and eval_n_limit > 0:
-            dataset = dataset.head(eval_n_limit)
-            logger.info(f'Limiting evaluation to {eval_n_limit} instances.')
+            # Use fixed random seed 42 for sampling without replacement
+            dataset = dataset.sample(
+                min(eval_n_limit, len(dataset)), random_state=42, replace=False
+            )
+            logger.info(
+                f'Randomly sampling {eval_n_limit} unique instances with random seed 42.'
+            )
     elif eval_n_limit and eval_n_limit > 0:
-        dataset = dataset.head(eval_n_limit)
-        logger.info(f'Limiting evaluation to first {eval_n_limit} instances.')
+        # Use fixed random seed 42 for sampling without replacement
+        dataset = dataset.sample(
+            min(eval_n_limit, len(dataset)), random_state=42, replace=False
+        )
+        logger.info(
+            f'Randomly sampling {eval_n_limit} unique instances with random seed 42.'
+        )
 
     new_dataset = [
         instance
@@ -344,18 +354,14 @@ def _process_instance_wrapper(
                 )
                 # Raise an error after all retries & stop the evaluation
                 logger.exception(e)
-
-                # NOTE: ome repeated errors of maximum error retries, abort entire sequence
-                # Example (shu): django-14771
+                # raise RuntimeError(
+                #     f'Maximum error retries reached for instance {instance.instance_id}'
+                # ) from e
                 return EvalOutput(
                     instance_id=instance.instance_id,
                     test_result={},
                     error=f'Maximum error retries reached for instance {instance.instance_id}',
                 )
-
-                # raise RuntimeError(
-                #     f'Maximum error retries reached for instance {instance.instance_id}'
-                # ) from e
             msg = (
                 '-' * 10
                 + '\n'
@@ -366,14 +372,6 @@ def _process_instance_wrapper(
                 + '-' * 10
                 + '\n'
             )
-            # HACK #
-            if 'failed to resolve source metadata' in stacktrace:
-                logger.info('Failed to pull docker image..... exiting right away')
-                return EvalOutput(
-                    instance_id=instance.instance_id,
-                    test_result={},
-                    error=f'Failed to pull docker image for instance {instance.instance_id}',
-                )
             # e is likely an EvalException, so we can't directly infer it from type
             # but rather check if it's a fatal error
             # But it can also be AgentRuntime**Error (e.g., swe_bench/eval_infer.py)
@@ -433,14 +431,10 @@ def run_evaluation(
                 )
                 results = pool.imap_unordered(_process_instance_wrapper_mp, args_iter)
                 for result in results:
-                    # NOTE: Some repeated errors of maximum error retries, abort entire sequence
-                    # Example (shu): django-14771
                     if result.error:
                         logger.error(
                             f'Instance {result.instance_id} failed due to error: {result.error}'
                         )
-                    # continue
-
                     update_progress(result, pbar, output_fp)
         else:
             for _, instance in dataset.iterrows():
@@ -536,6 +530,11 @@ def compatibility_for_eval_history_pairs(
 
 
 def is_fatal_evaluation_error(error: str | None) -> bool:
+    """
+    The AgentController class overrides last error for certain exceptions
+    We want to ensure those exeption do not overlap with fatal exceptions defined here
+    This is because we do a comparisino against the stringified error
+    """
     if not error:
         return False
 
@@ -588,6 +587,7 @@ def get_default_sandbox_config_for_eval() -> SandboxConfig:
         # large enough timeout, since some testcases take very long to run
         timeout=300,
         api_key=os.environ.get('ALLHANDS_API_KEY', None),
+        runtime_startup_env_vars={'NO_CHANGE_TIMEOUT_SECONDS': '30'},
         remote_runtime_api_url=os.environ.get('SANDBOX_REMOTE_RUNTIME_API_URL'),
         keep_runtime_alive=False,
         remote_runtime_init_timeout=3600,

@@ -1,10 +1,8 @@
 # Configuration Options
 
-This guide details all configuration options available for OpenHands, helping you customize its behavior and integrate it with other services.
-
 :::note
-If you are running in [GUI Mode](https://docs.all-hands.dev/modules/usage/how-to/gui-mode), the settings available in the Settings UI will always
-take precedence.
+This page outlines all available configuration options for OpenHands, allowing you to customize its behavior and
+integrate it with other services. In GUI Mode, any settings applied through the Settings UI will take precedence.
 :::
 
 ## Core Configuration
@@ -28,10 +26,10 @@ The core configuration options are defined in the `[core]` section of the `confi
   - Description: API token secret for Modal
 
 ### Workspace
-- `workspace_base`
+- `workspace_base` **(Deprecated)**
   - Type: `str`
   - Default: `"./workspace"`
-  - Description: Base path for the workspace
+  - Description: Base path for the workspace. **Deprecated: Use `SANDBOX_VOLUMES` instead.**
 
 - `cache_dir`
   - Type: `str`
@@ -103,20 +101,25 @@ The core configuration options are defined in the `[core]` section of the `confi
   - Description: Maximum number of iterations
 
 ### Sandbox Configuration
-- `workspace_mount_path_in_sandbox`
+- `volumes`
+  - Type: `str`
+  - Default: `None`
+  - Description: Volume mounts in the format 'host_path:container_path[:mode]', e.g. '/my/host/dir:/workspace:rw'. Multiple mounts can be specified using commas, e.g. '/path1:/workspace/path1,/path2:/workspace/path2:ro'
+
+- `workspace_mount_path_in_sandbox` **(Deprecated)**
   - Type: `str`
   - Default: `"/workspace"`
-  - Description: Path to mount the workspace in the sandbox
+  - Description: Path to mount the workspace in the sandbox. **Deprecated: Use `SANDBOX_VOLUMES` instead.**
 
-- `workspace_mount_path`
+- `workspace_mount_path` **(Deprecated)**
   - Type: `str`
   - Default: `""`
-  - Description: Path to mount the workspace
+  - Description: Path to mount the workspace. **Deprecated: Use `SANDBOX_VOLUMES` instead.**
 
-- `workspace_mount_rewrite`
+- `workspace_mount_rewrite` **(Deprecated)**
   - Type: `str`
   - Default: `""`
-  - Description: Path to rewrite the workspace mount path to. You can usually ignore this, it refers to special cases of running inside another container.
+  - Description: Path to rewrite the workspace mount path to. You can usually ignore this, it refers to special cases of running inside another container. **Deprecated: Use `SANDBOX_VOLUMES` instead.**
 
 ### Miscellaneous
 - `run_as_openhands`
@@ -197,21 +200,6 @@ For development setups, you can also define custom named LLM configurations. See
   - Default: `""`
   - Description: Custom LLM provider
 
-### Embeddings
-- `embedding_base_url`
-  - Type: `str`
-  - Default: `""`
-  - Description: Embedding API base URL
-
-- `embedding_deployment_name`
-  - Type: `str`
-  - Default: `""`
-  - Description: Embedding deployment name
-
-- `embedding_model`
-  - Type: `str`
-  - Default: `"local"`
-  - Description: Embedding model to use
 
 ### Message Handling
 - `max_message_chars`
@@ -296,23 +284,6 @@ For development setups, you can also define custom named LLM configurations. See
 
 The agent configuration options are defined in the `[agent]` and `[agent.<agent_name>]` sections of the `config.toml` file.
 
-### Microagent Configuration
-- `micro_agent_name`
-  - Type: `str`
-  - Default: `""`
-  - Description: Name of the micro agent to use for this agent
-
-### Memory Configuration
-- `memory_enabled`
-  - Type: `bool`
-  - Default: `false`
-  - Description: Whether long-term memory (embeddings) is enabled
-
-- `memory_max_threads`
-  - Type: `int`
-  - Default: `3`
-  - Description: The maximum number of threads indexing at the same time for embeddings
-
 ### LLM Configuration
 - `llm_config`
   - Type: `str`
@@ -325,17 +296,17 @@ The agent configuration options are defined in the `[agent]` and `[agent.<agent_
   - Default: `true`
   - Description: Whether function calling is enabled
 
-- `codeact_enable_browsing`
+- `enable_browsing`
   - Type: `bool`
   - Default: `false`
   - Description: Whether browsing delegate is enabled in the action space (only works with function calling)
 
-- `codeact_enable_llm_editor`
+- `enable_llm_editor`
   - Type: `bool`
   - Default: `false`
   - Description: Whether LLM editor is enabled in the action space (only works with function calling)
 
-- `codeact_enable_jupyter`
+- `enable_jupyter`
   - Type: `bool`
   - Default: `false`
   - Description: Whether Jupyter is enabled in the action space
@@ -384,6 +355,11 @@ To use these with the docker command, pass in `-e SANDBOX_<option>`. Example: `-
   - Type: `bool`
   - Default: `false`
   - Description: Use host network
+
+- `runtime_binding_address`
+  - Type: `str`
+  - Default: `0.0.0.0`
+  - Description: The binding address for the runtime ports.  It specifies which network interface on the host machine Docker should bind the runtime ports to.
 
 ### Linting and Plugins
 - `enable_auto_lint`
