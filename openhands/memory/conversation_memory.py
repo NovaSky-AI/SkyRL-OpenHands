@@ -18,6 +18,7 @@ from openhands.events.action import (
     FileReadAction,
     IPythonRunCellAction,
     MessageAction,
+    SearchAction,
 )
 from openhands.events.action.mcp import MCPAction
 from openhands.events.action.message import SystemMessageAction
@@ -211,6 +212,7 @@ class ConversationMemory:
                 BrowseInteractiveAction,
                 BrowseURLAction,
                 MCPAction,
+                SearchAction,
             ),
         ) or (isinstance(action, CmdRunAction) and action.source == 'agent'):
             tool_metadata = action.tool_call_metadata

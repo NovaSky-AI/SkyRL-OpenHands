@@ -25,6 +25,7 @@ from openhands.events.action import (
     FileReadAction,
     FileWriteAction,
     IPythonRunCellAction,
+    SearchAction,
 )
 from openhands.events.action.action import Action
 from openhands.events.action.files import FileEditSource
@@ -337,13 +338,82 @@ class ActionExecutionClient(Runtime):
         return self.send_action_for_execution(action)
 
     def read(self, action: FileReadAction) -> Observation:
-        return self.send_action_for_execution(action)
+        # return self.send_action_for_execution(action)
+        # convert to cmd run action
+        path = action.path
+        view_range = action.view_range
+        concise = action.concise
+        cmd = f"str_replace_editor view --path '{path}'"
+        if view_range is not None:
+            view_range_str = f"[{view_range[0]}, {view_range[1]}]"
+            cmd += f" --view_range '{view_range_str}'"
+        if concise:
+            cmd += ' --concise True'
+        cmd_action = CmdRunAction(command=cmd)
+        return self.send_action_for_execution(cmd_action)
 
     def write(self, action: FileWriteAction) -> Observation:
         return self.send_action_for_execution(action)
 
     def edit(self, action: FileEditAction) -> Observation:
         return self.send_action_for_execution(action)
+        # convert to cmd run action
+        # import shlex
+        # path = action.path
+        # command = action.command
+        # file_text = action.file_text
+        # old_str = action.old_str
+        # new_str = action.new_str
+        # insert_line = action.insert_line
+        # cmd = f"str_replace_editor {command} --path '{path}'"
+        # if file_text is not None:
+        #     # escape single quote
+        #     file_text_escaped = shlex.quote(file_text)
+        #     cmd += f' --file_text {file_text_escaped}'
+        # if old_str is not None:
+        #     old_str_escaped = shlex.quote(old_str)
+        #     cmd += f' --old_str {old_str_escaped}'
+        # if new_str is not None:
+        #     new_str_escaped = shlex.quote(new_str)
+        #     cmd += f' --new_str {new_str_escaped}'
+        # if insert_line is not None:
+        #     cmd += f' --insert_line {insert_line}'
+        # cmd_action = CmdRunAction(command=cmd)
+        # return self.send_action_for_execution(cmd_action)
+        
+    
+    def search(self, action: SearchAction) -> Observation:
+        # return self.send_action_for_execution(action)
+        # convert to cmd run action
+        # old search tool
+        # python_only = action.python_only
+        # search_term = action.search_term
+        # filepath = action.path
+        # cmd = f"search --search_term '{search_term}' --path '{filepath}'"
+        # if not python_only:
+        #     cmd += "--python_only False"
+
+        # new search tool
+        search_terms = action.search_terms
+        line_nums = action.line_nums
+        file_path_or_pattern = action.file_path_or_pattern
+        # cmd = f"search --file_path_or_pattern '{file_path_or_pattern}'"
+        # if search_terms is not None:
+        #     # list to str-style list
+        #     search_terms_str = '[' + ','.join([f'"{x}"' for x in search_terms]) + ']'
+        #     cmd += f" --search_terms '{search_terms_str}'"
+        # if line_nums is not None:
+        #     line_nums_str = '[' + ','.join([str(x) for x in line_nums]) + ']'
+        #     cmd += f" --line_nums '{line_nums_str}'"
+        import json
+        cmd_parts = ["search", "--file_path_or_pattern", f"'{file_path_or_pattern}'"]
+        if search_terms is not None:
+            cmd_parts += ["--search_terms", f"'{json.dumps(search_terms)}'"]
+
+        cmd = " ".join(cmd_parts)
+        print(f"cmd: {cmd}")
+        cmd_action = CmdRunAction(command=cmd)
+        return self.send_action_for_execution(cmd_action)
 
     def browse(self, action: BrowseURLAction) -> Observation:
         return self.send_action_for_execution(action)

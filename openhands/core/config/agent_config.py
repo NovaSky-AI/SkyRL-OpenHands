@@ -21,6 +21,8 @@ class AgentConfig(BaseModel):
     enable_jupyter: bool = Field(default=True)
     """Whether to enable Jupyter tool"""
     enable_cmd: bool = Field(default=True)
+    """Whether to enable Jupyter tool"""
+    enable_search: bool = Field(default=True)
     """Whether to enable bash tool"""
     enable_think: bool = Field(default=True)
     """Whether to enable think tool"""

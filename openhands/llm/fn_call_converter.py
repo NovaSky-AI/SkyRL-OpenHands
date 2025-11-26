@@ -560,11 +560,11 @@ def _extract_and_validate_params(
 
 def _fix_stopword(content: str) -> str:
     """Fix the issue when some LLM would NOT return the stopword."""
-    if '<function=' in content and content.count('<function=') == 1:
-        if content.endswith('</'):
-            content = content.rstrip() + 'function>'
-        else:
-            content = content + '\n</function>'
+    # if '<function=' in content and content.count('<function=') == 1:
+    #     if content.endswith('</'):
+    #         content = content.rstrip() + 'function>'
+    #     else:
+    #         content = content + '\n</function>'
     return content
 
 

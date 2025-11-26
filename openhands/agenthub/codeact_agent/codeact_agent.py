@@ -19,6 +19,7 @@ from openhands.agenthub.codeact_agent.tools.llm_based_edit import LLMBasedFileEd
 from openhands.agenthub.codeact_agent.tools.str_replace_editor import (
     create_str_replace_editor_tool,
 )
+from openhands.agenthub.codeact_agent.tools.search import create_search_files_tool
 from openhands.agenthub.codeact_agent.tools.think import ThinkTool
 from openhands.agenthub.codeact_agent.tools.web_read import WebReadTool
 from openhands.controller.agent import Agent
@@ -119,6 +120,8 @@ class CodeActAgent(Agent):
             tools.append(ThinkTool)
         if self.config.enable_finish:
             tools.append(FinishTool)
+        if self.config.enable_search:
+            tools.append(create_search_files_tool(use_short_description=use_short_tool_desc))
         if self.config.enable_browsing:
             if sys.platform == 'win32':
                 logger.warning('Windows runtime does not support browsing yet')

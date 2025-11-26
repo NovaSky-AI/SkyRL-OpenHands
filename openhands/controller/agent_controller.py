@@ -839,7 +839,7 @@ class AgentController:
             ) as e:
                 self.event_stream.add_event(
                     ErrorObservation(
-                        content=str(e),
+                        content="Bad LLM Response: " + str(e),
                     ),
                     EventSource.AGENT,
                 )

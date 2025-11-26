@@ -6,6 +6,7 @@ from .llm_based_edit import LLMBasedFileEditTool
 from .str_replace_editor import create_str_replace_editor_tool
 from .think import ThinkTool
 from .web_read import WebReadTool
+from .search import create_search_files_tool
 
 __all__ = [
     'BrowserTool',
@@ -14,6 +15,7 @@ __all__ = [
     'IPythonTool',
     'LLMBasedFileEditTool',
     'create_str_replace_editor_tool',
+    'create_search_files_tool',
     'WebReadTool',
     'ThinkTool',
 ]

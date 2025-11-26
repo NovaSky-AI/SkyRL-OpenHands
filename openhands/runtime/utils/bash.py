@@ -557,6 +557,7 @@ class BashSession:
                 "You may wait longer to see additional output of the previous command by sending empty command '', "
                 'send other commands to interact with the current process, '
                 'or send keys ("C-c", "C-z", "C-d") to interrupt/kill the previous command before sending your new command.]'
+                'For long running process, try to run them in the background and redirect output to a file, e.g. `python3 app.py > server.log 2>&1 &`.'
             )
             logger.debug(f'PREVIOUS COMMAND OUTPUT: {raw_command_output}')
             command_output = self._get_command_output(

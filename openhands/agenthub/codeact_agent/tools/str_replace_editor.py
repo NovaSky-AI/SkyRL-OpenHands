@@ -96,6 +96,10 @@ def create_str_replace_editor_tool(
                         'items': {'type': 'integer'},
                         'type': 'array',
                     },
+                    'concise': {
+                        'description': 'Optional parameter to enable a condensed view for Python files. Default is `false`. Super useful for understanding the structure of a Python file without getting bogged down in the details.',
+                        'type': 'boolean',
+                    },
                 },
                 'required': ['command', 'path'],
             },

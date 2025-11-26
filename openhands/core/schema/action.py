@@ -91,3 +91,6 @@ class ActionType(str, Enum):
 
     CONDENSATION = 'condensation'
     """Condenses a list of events into a summary."""
+
+    SEARCH = 'search'
+    """Searches for a term in files in the codebase."""

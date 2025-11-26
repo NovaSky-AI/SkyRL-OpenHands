@@ -18,6 +18,7 @@ from openhands.agenthub.codeact_agent.tools import (
     WebReadTool,
     create_cmd_run_tool,
     create_str_replace_editor_tool,
+    create_search_files_tool,
 )
 from openhands.core.exceptions import (
     FunctionCallNotExistsError,
@@ -36,6 +37,7 @@ from openhands.events.action import (
     FileReadAction,
     IPythonRunCellAction,
     MessageAction,
+    SearchAction,
 )
 from openhands.events.action.mcp import MCPAction
 from openhands.events.event import FileEditSource, FileReadSource
@@ -118,6 +120,39 @@ def response_to_actions(
                 )
 
             # ================================================
+            # SearchFilesTool
+            # ================================================
+            elif tool_call.function.name == create_search_files_tool()['function']['name']:
+                # if 'search_term' not in arguments:
+                #     raise FunctionCallValidationError(
+                #         f'Missing required argument "search_term" in tool call {tool_call.function.name}'
+                #     )
+
+                # action = SearchAction(
+                #     search_term=arguments['search_term'],
+                #     path=arguments.get('path', '.'),
+                #     python_only=arguments.get('python_only', 'false'),
+                # )
+                # either search_terms or line_nums must be provided
+                if 'search_terms' not in arguments:
+                    raise FunctionCallValidationError(
+                        f'Missing required argument "search_terms" in tool call {tool_call.function.name}'
+                    )
+                # if not isinstance(arguments['search_terms'], list):
+                #     raise FunctionCallValidationError(
+                #         f'Invalid format for argument "search_terms" in tool call {tool_call.function.name}. Expected a list of strings.'
+                #     )
+                search_terms = arguments.get('search_terms', None)
+                if isinstance(search_terms, str):
+                    search_terms = [search_terms]
+                action = SearchAction(
+                    search_terms=search_terms,
+                    file_path_or_pattern=arguments.get(
+                        'file_path_or_pattern', '**/*.py'
+                    ),
+                )
+                
+            # ================================================
             # LLMBasedFileEditTool (LLM-based file editor, deprecated)
             # ================================================
             elif tool_call.function.name == LLMBasedFileEditTool['function']['name']:
@@ -154,15 +189,31 @@ def response_to_actions(
                 }
 
                 if command == 'view':
+                    # check view_range has valid format ([a,b]) if provided
+                    if 'view_range' in other_kwargs:
+                        view_range = other_kwargs['view_range']
+                        if (
+                            not isinstance(view_range, list)
+                            or len(view_range) != 2
+                            or not all(isinstance(i, int) for i in view_range)
+                        ):
+                            raise FunctionCallValidationError(
+                                f'Invalid format for argument "view_range" in tool call {tool_call.function.name}. Expected format: [start_line, end_line]'
+                            )
+
                     action = FileReadAction(
                         path=path,
                         impl_source=FileReadSource.OH_ACI,
                         view_range=other_kwargs.get('view_range', None),
+                        concise=other_kwargs.get('concise', False)
                     )
                 else:
                     if 'view_range' in other_kwargs:
                         # Remove view_range from other_kwargs since it is not needed for FileEditAction
                         other_kwargs.pop('view_range')
+                    if 'concise' in other_kwargs:
+                        # Remove concise from other_kwargs since it is not needed for FileEditAction
+                        other_kwargs.pop('concise')
 
                     # Filter out unexpected arguments
                     valid_kwargs = {}
